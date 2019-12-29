@@ -15,8 +15,8 @@
 
 'use strict';
 
-const express = require('express');
-const ejs = require('ejs');
+import * as express from 'express';
+import * as ejs from 'ejs';
 
 
 const app = express();
