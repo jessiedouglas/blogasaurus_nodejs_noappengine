@@ -15,8 +15,13 @@
 
 'use strict';
 
+import {Request, Response} from "express";
 import * as express from 'express';
 import * as ejs from 'ejs';
+// For typeORM
+import "reflect-metadata";
+import {createConnection} from "typeorm";
+import {BlogPost} from './entity/blogpost';
 
 
 const app = express();
@@ -29,7 +34,7 @@ app.use(express.urlencoded({extended: true}));
 app.enable('trust proxy');
 
 // Home Page
-app.get('/', (req, res) => {
+app.get('/', (req: Request, res: Response) => {
   ejs.renderFile('templates/index.html', {}, {}, function(err, html_output){
     res
       .status(200)
@@ -39,7 +44,7 @@ app.get('/', (req, res) => {
 });
 
 // About my family
-app.get('/about', (req, res) => {
+app.get('/about', (req: Request, res: Response) => {
   ejs.renderFile('templates/about_my_family.html', {}, {}, function(err, html_output){
     res
       .status(200)
@@ -49,48 +54,42 @@ app.get('/about', (req, res) => {
 });
 
 // New blog post
-// app.get('/post', async (req, res) => {
-//   const email = await iapAuth.getSignedInEmail(req);
-//   if (email) {
-//     ejs.renderFile('templates/new_post.html', {email}, {}, function(err, html_output){
-//       res
-//         .status(200)
-//         .send(html_output)
-//         .end();
-//     });
-//   } else {
-//     res.status(404).send('404 Not Found').end();
-//   }
-// });
+app.get('/post', (req: Request, res: Response) => {
+  ejs.renderFile('templates/new_post.html', {}, {}, function(err, html_output){
+    res
+      .status(200)
+      .send(html_output)
+      .end();
+  });
+});
 
-// View all blog posts
-// app.post('/post', async (req, res) => {
-//   const email = await iapAuth.getSignedInEmail(req);
-//   if (email) {
-//     const blogPost = {
-//       title: req.body.title,
-//       email: req.body.email,
-//       content: req.body.content,
-//     };
-//     await blogPostStorage.insertBlogPost(blogPost)
-//     const [allBlogPosts] = await blogPostStorage.getAllBlogPosts();
-//     const templateData = {allPosts: allBlogPosts};
-//     ejs.renderFile('templates/view_all_posts.html', templateData, {}, function(err, htmlOutput){
-//       res
-//         .status(200)
-//         .send(htmlOutput)
-//         .end();
-//     });
-//   } else {
-//     res.status(404).send('404 Not Found').end();
-//   }
-// });
+// View blog post
+app.post('/post', async (req: Request, res: Response) => {
+  const newBlogPost = new BlogPost();
+  newBlogPost.title = req.body.title;
+  newBlogPost.author = req.body.author;
+  newBlogPost.content = req.body.content;
+  await newBlogPost.save();
 
-// Start the server
-const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => {
-  console.log(`App listening on port ${PORT}`);
-  console.log('Press Ctrl+C to quit.');
+  const allBlogPosts = await BlogPost.find();
+  ejs.renderFile('templates/view_all_posts.html', {allPosts: allBlogPosts}, {}, function(err, html_output){
+    res
+      .status(200)
+      .send(html_output)
+      .end();
+  });
+});
+
+// Connect to the database
+createConnection().then(() => {
+  // Start the server
+  const PORT = process.env.PORT || 8080;
+  app.listen(PORT, () => {
+    console.log(`App listening on port ${PORT}`);
+    console.log('Press Ctrl+C to quit.');
+  });
+}).catch((e) => {
+  console.log("TypeORM error: ", e);
 });
 
 module.exports = app;
