@@ -22,13 +22,18 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-const express = require('express');
-const ejs = require('ejs');
-const blogPostStorage = require('./server/datastore_example.js');
-const iapAuth = require('./server/iap_auth.js');
+Object.defineProperty(exports, "__esModule", { value: true });
+const express = require("express");
+const ejs = require("ejs");
+// For typeORM
+require("reflect-metadata");
+const typeorm_1 = require("typeorm");
+const blogpost_1 = require("./entity/blogpost");
+const ormconfig_1 = require("./ormconfig");
 const app = express();
 // Set up static files in 'static' folder
-app.use(express.static('static'));
+app.use(express.static('dist/static/ts'));
+app.use(express.static('static/css'));
 // Parse forms
 app.use(express.urlencoded({ extended: true }));
 // So it can be hosted on app engine
@@ -52,48 +57,40 @@ app.get('/about', (req, res) => {
     });
 });
 // New blog post
-app.get('/post', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const email = yield iapAuth.getSignedInEmail(req);
-    if (email) {
-        ejs.renderFile('templates/new_post.html', { email }, {}, function (err, html_output) {
-            res
-                .status(200)
-                .send(html_output)
-                .end();
-        });
-    }
-    else {
-        res.status(404).send('404 Not Found').end();
-    }
-}));
-// New blog post
+app.get('/post', (req, res) => {
+    ejs.renderFile('templates/new_post.html', {}, {}, function (err, html_output) {
+        res
+            .status(200)
+            .send(html_output)
+            .end();
+    });
+});
+// View blog post
 app.post('/post', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const email = yield iapAuth.getSignedInEmail(req);
-    if (email) {
-        const blogPost = {
-            title: req.body.title,
-            email: req.body.email,
-            content: req.body.content,
-        };
-        yield blogPostStorage.insertBlogPost(blogPost);
-        const [allBlogPosts] = yield blogPostStorage.getAllBlogPosts();
-        const templateData = { allPosts: allBlogPosts };
-        ejs.renderFile('templates/view_all_posts.html', templateData, {}, function (err, htmlOutput) {
-            res
-                .status(200)
-                .send(htmlOutput)
-                .end();
-        });
-    }
-    else {
-        res.status(404).send('404 Not Found').end();
-    }
+    const newBlogPost = new blogpost_1.BlogPost();
+    newBlogPost.title = req.body.title;
+    newBlogPost.author = req.body.author;
+    newBlogPost.content = req.body.content;
+    yield newBlogPost.save();
+    const allBlogPosts = yield blogpost_1.BlogPost.find();
+    ejs.renderFile('templates/view_all_posts.html', { allPosts: allBlogPosts }, {}, function (err, html_output) {
+        res
+            .status(200)
+            .send(html_output)
+            .end();
+    });
 }));
-// Start the server
-const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => {
-    console.log(`App listening on port ${PORT}`);
-    console.log('Press Ctrl+C to quit.');
+const env = process.env._ && process.env._.indexOf("heroku") ? 'prod' : 'dev';
+// Connect to the database
+typeorm_1.createConnection(ormconfig_1.getConnectionOptions(env)).then(() => {
+    // Start the server
+    const PORT = process.env.PORT || 8080;
+    app.listen(PORT, () => {
+        console.log(`App listening on port ${PORT}`);
+        console.log('Press Ctrl+C to quit.');
+    });
+}).catch((e) => {
+    console.log("TypeORM error: ", e);
 });
 module.exports = app;
 //# sourceMappingURL=app.js.map

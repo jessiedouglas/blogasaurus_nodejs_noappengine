@@ -22,6 +22,7 @@ import * as ejs from 'ejs';
 import "reflect-metadata";
 import {createConnection} from "typeorm";
 import {BlogPost} from './entity/blogpost';
+import {getConnectionOptions} from './ormconfig';
 
 
 const app = express();
@@ -80,8 +81,10 @@ app.post('/post', async (req: Request, res: Response) => {
   });
 });
 
+const env = process.env._ && process.env._.indexOf("heroku") ? 'prod' : 'dev';
+
 // Connect to the database
-createConnection().then(() => {
+createConnection(getConnectionOptions(env)).then(() => {
   // Start the server
   const PORT = process.env.PORT || 8080;
   app.listen(PORT, () => {
